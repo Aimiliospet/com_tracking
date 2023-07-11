@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package>
+  <name>COM_EKF</name>
+  <version>2.0.0</version>
+  <description>Center of Mass tracking with Extended Kalman Filter</description>
+  <author email="aimilios.petroulas@outlook.com">Aimilios Petroulas</author> 
+  <maintainer email="aimilios.petroulas@outlook.com">Aimilios Petroulas</maintainer>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>pinocchio</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>cmake_modules</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>pinocchio</run_depend>
+  <run_depend>dynamic_reconfigure</run_depend>
+</package>

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Call com_ekf -->
+  <node pkg="COM_EKF" type="COM_EKF" name="COM_EKF" respawn="false" output="screen" >
+ 	<!-- Load configurations from YAML file to parameter server -->
+   	 <rosparam file="$(find COM_EKF)/config/params.yaml" command="load"/> 
+  </node>
+
+</launch>
