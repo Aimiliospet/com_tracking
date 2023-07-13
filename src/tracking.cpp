@@ -405,9 +405,9 @@ void tracking::init()
     copl = Vector3d::Zero();
     copr = Vector3d::Zero();
     omegawb = Vector3d::Zero();
-    vwb = Vector3d::Zero();
-    wbb = Vector3d::Zero();
-    abb = Vector3d::Zero();
+    (*vwb) = Vector3d::Zero();
+    (*wbb) = Vector3d::Zero();
+    (*abb) = Vector3d::Zero();
     omegabl = Vector3d::Zero();
     omegabr = Vector3d::Zero();
     vbl = Vector3d::Zero();
@@ -538,8 +538,8 @@ void tracking::estimateWithIMUEKF()
     //Update EKF
     if (firstUpdate)
     {
-        pos_update = Twb.translation();
-        q_update = qwb;
+        (*pos_update) = Twb.translation();
+        (*q_update) = qwb;
         //First Update
         firstUpdate = false;
         imuEKF->updateWithLegOdom(pos_update, q_update);
@@ -552,71 +552,28 @@ void tracking::estimateWithIMUEKF()
             //Diff leg odom update
             pos_leg_update = Twb.translation() - Twb_.translation();
             q_leg_update = qwb * qwb_.inverse();
-            pos_update += pos_leg_update;
-            q_update *= q_leg_update;
-            //imuEKF->updateWithTwistRotation(vwb, q_update);
+            (*pos_update) += pos_leg_update;
+            (*q_update) *= q_leg_update;
+            
             imuEKF->updateWithLegOdom(pos_update, q_update);
-            //imuEKF->updateWithTwist(vwb);
+            
         }
-        else
+        else       
         {
-
-            if (odom_inc && !odom_divergence)
-            {
-                if (outlier_count < 3)
-                {
-                    pos_update_ = pos_update;
-                    pos_update += T_B_P.linear() * Vector3d(odom_msg.pose.pose.position.x - odom_msg_.pose.pose.position.x,
-                                                            odom_msg.pose.pose.position.y - odom_msg_.pose.pose.position.y, odom_msg.pose.pose.position.z - odom_msg_.pose.pose.position.z);
-
-                    q_now = q_B_P * Quaterniond(odom_msg.pose.pose.orientation.w, odom_msg.pose.pose.orientation.x,
-                                                odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z);
-
-                    q_prev = q_B_P * Quaterniond(odom_msg_.pose.pose.orientation.w, odom_msg_.pose.pose.orientation.x,
-                                                 odom_msg_.pose.pose.orientation.y, odom_msg_.pose.pose.orientation.z);
-
-                    q_update_ = q_update;
-
-                    q_update *= (q_now * q_prev.inverse());
-
-                    odom_inc = false;
-                    odom_msg_ = odom_msg;
-
-                    outlier = imuEKF->updateWithOdom(pos_update, q_update, useOutlierDetection);
-                    if (outlier)
-                    {
-                        outlier_count++;
-                        pos_update = pos_update_;
-                        q_update = q_update_;
-                    }
-                    else
-                    {
-                        outlier_count = 0;
-                    }
-                }
-                else
-                {
-                    odom_divergence = true;
-                }
-            }
-
-            if (odom_divergence)
-            {
-                //std::cout<<"Odom divergence, updating only with leg odometry"<<std::endl;
-                pos_update += pos_leg_update;
-                q_update *= q_leg_update;
-                imuEKF->updateWithTwistRotation(vwb, q_update);
-                //imuEKF->updateWithTwist(vwb);
+            (*pos_update) += pos_leg_update;
+            (*q_update) *= q_leg_update;
+            imuEKF->updateWithTwistRotation(vwb, q_update);
+                
             }
         }
     }
 
     //Estimated TFs for Legs and Support foot
-    Twl = imuEKF->Tib * Tbl;
-    Twr = imuEKF->Tib * Tbr;
+    Twl = imuEKF->(*Tib) * Tbl;
+    Twr = imuEKF->(*Tib) * Tbr;
     qwl = Quaterniond(Twl.linear());
     qwr = Quaterniond(Twr.linear());
-    Tws = imuEKF->Tib * Tbs;
+    Tws = imuEKF->(*Tib) * Tbs;
     qws = Quaterniond(Tws.linear());
 }
 
@@ -763,7 +720,7 @@ void tracking::computeKinTFs()
         qbs = qbr;
     }
 
-    dr->computeDeadReckoning(Twb.linear(), Tbl.linear(), Tbr.linear(), omegawb, wbb,
+    dr->computeDeadReckoning(Twb.linear(), Tbl.linear(), Tbr.linear(), omegawb, (*wbb),
                              Tbl.translation(), Tbr.translation(),
                              vbl, vbr, omegabl, omegabr,
                              LLegForceFilt(2), RLegForceFilt(2), LLegGRF, RLegGRF, LLegGRT, RLegGRT);
@@ -773,7 +730,7 @@ void tracking::computeKinTFs()
 
     Twb_ = Twb;
     Twb.translation() = dr->getOdom();
-    vwb = dr->getLinearVel();
+    (*vwb) = dr->getLinearVel();
     vwl = dr->getLFootLinearVel();
     vwr = dr->getRFootLinearVel();
     omegawl = dr->getLFootAngularVel();
@@ -1137,24 +1094,24 @@ void tracking::imuCb(const sensor_msgs::Imu::ConstPtr &msg)
 }
 void tracking::baseIMU(const sensor_msgs::Imu &msg)
 {
-    wbb = T_B_G.linear() * Vector3d(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
-    abb = T_B_A.linear() * Vector3d(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
+    (*wbb) = T_B_G.linear() * Vector3d(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
+    (*abb) = T_B_A.linear() * Vector3d(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
 
     if (useMahony)
     {
-        mh->updateIMU(wbb, abb);
+        mh->updateIMU((*wbb), (*abb));
         Rwb = mh->getR();
     }
     else
     {
-        mw->updateIMU(wbb, abb);
+        mw->updateIMU((*wbb), (*abb));
         Rwb = mw->getR();
     }
 
     if (imuCalibrationCycles < maxImuCalibrationCycles && calibrateIMU)
     {
-        bias_g += wbb;
-        bias_a += abb - Rwb.transpose() * Vector3d(0, 0, g);
+        bias_g += (*wbb);
+        bias_a += (*abb) - Rwb.transpose() * Vector3d(0, 0, g);
         imuCalibrationCycles++;
         return;
     }

@@ -39,7 +39,8 @@ private:
 	Eigen::Affine3d Twv0;
 	Eigen::VectorXd joint_state_pos,joint_state_vel;
 
-	Eigen::Vector3d wbb, abb, omegabl, omegabr, vbl, vbr, vbln, vbrn, vwb, omegawb, vwl, vwr, omegawr, omegawl, p_FT_LL, p_FT_RL;
+	std::unique_ptr<Vector3d> wbb, abb, vwb;
+	Eigen::Vector3d omegabl, omegabr, vbl, vbr, vbln, vbrn, omegawb, vwl, vwr, omegawr, omegawl, p_FT_LL, p_FT_RL;
 	Eigen::Matrix3d JLQnJLt, JRQnJRt;
 	Affine3d Twl, Twr, Tbl, Tbr;
 	COM_EKF::robotDyn* rd;
@@ -64,8 +65,10 @@ private:
 	int medianWindow;
 	int no_motion_it, no_motion_it_threshold;
 	double no_motion_threshold;
-	Quaterniond  q_update, q_update_, q_leg_update, q_now, q_prev;
-	Vector3d  pos_update, pos_update_, pos_leg_update, temp, gt_odom;
+	std::unique_ptr<Eigen::Quaterniond> q_update;
+	Quaterniond  q_update_, q_leg_update, q_now, q_prev;
+	std::unique_ptr<Vector3d> pos_update ;
+	Vector3d  pos_update_, pos_leg_update, temp, gt_odom;
 	Affine3d T_B_A, T_B_G, T_B_P,  , T_FT_LL, T_B_GT;
 	Quaterniond  q_B_P, q_B_GT, tempq, qoffsetGTCoM, tempq_, gt_odomq; 
 	bool useCoMEKF, useLegOdom, firstGT,firstGTCoM, useOutlierDetection;
