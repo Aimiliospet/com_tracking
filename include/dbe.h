@@ -6,12 +6,12 @@
 
 using namespace Eigen;
 
-class IMUEKF {
+class DBE {
 
-std::unique_ptr<Matrix<double, 15, 12>> Lcf;
+//std::unique_ptr<Matrix<double, 15, 12>> Lcf;
 /// Error Covariance, Linearized state transition model, Identity matrix,
 /// state uncertainty matrix
-std::unique_ptr<Matrix<double, 15, 15>> P, Af, Acf, If, Qff;
+std::unique_ptr<Matrix<double, 15, 15>> P, Af, Acf, If;
 /// Linearized Measurement model
 std::unique_ptr<Matrix<double, 6, 15>> Hf, Hvf;
 std::unique_ptr<Matrix<double, 3, 15>> Hv;
@@ -25,8 +25,9 @@ std::unique_ptr<Matrix<double, 15, 1>> dxf;
 /// Update error covariance and Measurement noise
 std::unique_ptr<Matrix<double, 6, 6>> s, R;
 /// position, velocity , acc bias, gyro bias, bias corrected acc, bias corrected gyr, temp vectors
-std::unique_ptr<Vector3d> r, v, omega, f, fhat, omegahat, temp;
+std::unique_ptr<Vector3d> r, v, omega, f, fhat, omegahat, temp, omega_old;
 /// Innovation vectors
+
 std::unique_ptr<Matrix<double, 6, 1>> z;
 std::unique_ptr<Vector3d> zv;
 
@@ -60,7 +61,6 @@ public:
 
         std::unique_ptr<Matrix<double, 15, 1>> x;
         bool firstrun;
-		bool useEuler;
         std::unique_ptr<Vector3d> g, bgyr, bacc, gyro, acc, vel, pos, angle;
         double acc_qx, acc_qy, acc_qz, gyr_qx, gyr_qy, gyr_qz, gyrb_qx, gyrb_qy, gyrb_qz,
 				accb_qx, accb_qy, accb_qz, odom_px, odom_py, odom_pz, odom_ax, odom_ay, odom_az,
@@ -75,11 +75,8 @@ public:
         std::unique_ptr<Eigen::Affine3d> Tib;
         std::unique_ptr<Eigen::Quaterniond> qib;
         double dt;
-        IMUEKF();
-        /** @fn void setdt(double dtt)
-		 *  @brief sets the discretization of the Error State Kalman Filter (ESKF)
-		 *  @param dtt sampling time in seconds
-		 */
+        DBE();
+        
 		void updateVars();
 		/** @fn void setdt(double dtt)
 		 *  @brief sets the discretization of the Error State Kalman Filter (ESKF)
@@ -245,8 +242,8 @@ public:
 			if (omeganorm > std::numeric_limits<double>::epsilon())
 			{
 			    std::unique_ptr<Eigen::Matrix3d> omega_skew = wedge(omega);
-				(*res) += (*omega_skew) * (sin(omeganorm) / omeganorm);
-				(*res) += ((*omega_skew) * (*omega_skew)) * ((1.000 - cos(omeganorm)) / (omeganorm * omeganorm));
+				(*res) += (*omega_skew) * sin(omeganorm);
+				(*res) += ((*omega_skew) * (*omega_skew)) * (1.000 - cos(omeganorm));
 			}
 
 			return res;
@@ -312,4 +309,53 @@ public:
 
 			return res;
 		}
+
+		inline std::unique_ptr<Eigen::Matrix3d> quaternionToRotationMatrix(const std::unique_ptr<Eigen::Quaterniond>& q) {
+			// Normalize the quaternion if necessary
+			std::unique_ptr<Eigen::Quaterniond> normalized_q;
+			(*normalized_q) =  q->normalized();
+			// Extract the quaternion components
+			double w = normalized_q->w();
+			double x = normalized_q->x();
+			double y = normalized_q->y();
+			double z = normalized_q->z();
+
+			// Calculate the rotation matrix elements
+			double xx = x * x;
+			double xy = x * y;
+			double xz = x * z;
+			double yy = y * y;
+			double yz = y * z;
+			double zz = z * z;
+			double wx = w * x;
+			double wy = w * y;
+			double wz = w * z;
+
+			// Construct the rotation matrix
+			std::unique_ptr<Eigen::Matrix3d> rotation;
+			(*rotation) << 1 - 2 * (yy + zz), 2 * (xy - wz), 2 * (xz + wy),
+						2 * (xy + wz), 1 - 2 * (xx + zz), 2 * (yz - wx),
+						2 * (xz - wy), 2 * (yz + wx), 1 - 2 * (xx + yy);
+
+			return rotation;
+		}
+
+		inline Vector3d vectorRate(conststd::unique_ptr<Eigen::Vector3d>& vec, conststd::unique_ptr<Eigen::Vector3d>& vecNext) {
+			// Compute the rate of each component of the vector
+			double dx = ((*vecNext).x() - (*vec).x()) / dt;
+			double dy = ((*vecNext).y() - (*vec).y()) / dt;
+			double dz = ((*vecNext).z() - (*vec).z()) / dt;
+
+			// Return the rate as a new 3D vector
+			return Vector3d(dx, dy, dz);
+		}
+
+		inline std::unique_ptr<Eigen::VectorXd> quaternionDerivative(conststd::unique_ptr<Eigen::Vector4d>& q) {
+			std::unique_ptr<Eigen::VectorXd> qDot(4);
+
+			// Derivative of quaternion elements
+			(*qDot) << -q(1), -q(2), -q(3), q(0);
+
+			return qDot;
+}
 };

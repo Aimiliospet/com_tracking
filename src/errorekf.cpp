@@ -41,10 +41,8 @@ void IMUEKF::init()
     Kv->setZero();
 
     s->setZero();
-    sv->setZero();
 
     R->setZero();
-    Rv->setZero();
 
     Acf->setZero();
     Qff->setZero();
@@ -158,9 +156,13 @@ std::unique_ptr<Matrix<double, 15, 1>> IMUEKF::computeDiscreteDyn(const std::uni
 
 void IMUEKF::predict(const std::unique_ptr<Vector3d>& omega_, const std::unique_ptr<Vector3d>& f_)
 {
+
+    //save new values of IMU readings (inputs)
     (*omega) = (*omega_);
     (*f) = (*f_);
+    //calculate omegahat (new reading - bias)
     omegahat->noalias() = (*omega) - x->segment<3>(9);
+    //save old speed 
     (*v) = x->segment<3>(0);
 
     // Update the Input-noise Jacobian
@@ -182,19 +184,22 @@ void IMUEKF::predict(const std::unique_ptr<Vector3d>& omega_, const std::unique_
     (*Qf)(10, 10) = accb_qy * accb_qy;
     (*Qf)(11, 11) = accb_qz * accb_qz;
 
+    Qff->noalias() = (*Af) * (*Lcf) * (*Qf) * Lcf->transpose() * Af->transpose() * dt;
     /** Predict Step: Propagate the Error Covariance  **/
     P->noalias() = (*Af) * (*P) * Af->transpose() + (*Qff);
 
     // Propagate only if non-zero input
+    //update rotation separately
     if (!omegahat->isZero())
     {   
         std::unique_ptr<Vector3d> temp;
         (*temp) = (*omegahat) * dt;
-
+        //update Rib
         (*Rib) *= (*expMap(temp));
     }
 
     x->segment<3>(3).setZero();
+    //update x state
     updateVars();
 }
 
@@ -238,6 +243,7 @@ void IMUEKF::updateWithTwistRotation(const std::unique_ptr<Vector3d>& y,const st
     {   
         const std::unique_ptr<Vector3d> temp;
         (*temp) = dxf->segment<3>(3);
+        //update Rib
         (*Rib) *= (*expMap(temp));
     }
     x->segment<3>(3) = Vector3d::Zero();
@@ -278,6 +284,7 @@ void IMUEKF::updateWithLegOdom(const std::unique_ptr<Vector3d>& y,const std::uni
     {
         std::unique_ptr<Eigen::Vector3d> temp;
         (*temp) = dxf->segment<3>(3);
+        //update Rib
         (*Rib) *= (*expMap(temp));
     }
     x->segment<3>(3) = Vector3d::Zero();

@@ -287,7 +287,6 @@ void tracking::loadIMUEKFparams()
         n_p.param<double>("velocity_noise_density_y", imuEKF->vel_py, 1.0e-01);
         n_p.param<double>("velocity_noise_density_z", imuEKF->vel_pz, 1.0e-01);
         n_p.param<double>("gravity", imuEKF->ghat, 9.81);
-        n_p.param<bool>("useEuler", imuEKF->useEuler, true);
         n_p.param<bool>("useOutlierDetection", useOutlierDetection, false);
         //n_p.param<double>("mahalanobis_TH", imuEKF->mahalanobis_TH, -1.0);
     }
